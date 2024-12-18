@@ -1,40 +1,16 @@
 # train.py
 import pandas as pd
 import numpy as np
-from fontTools.feaLib import location
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
 from meteostat import Point, Daily
 import cv2
 from datetime import datetime, timedelta
-from shapely.geometry import box
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.cluster import DBSCAN
 from sklearn.manifold import TSNE
-from sklearn.metrics import mean_absolute_percentage_error
 from sklearn.svm import SVR
-import lightgbm
-from lightgbm import LGBMRegressor
-from sklearn.metrics import make_scorer
-from scipy.stats import boxcox
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, mean_absolute_percentage_error
-from sklearn.model_selection import train_test_split
-from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.ensemble import IsolationForest
-from sklearn.dummy import DummyRegressor
-from sklearn.linear_model import LassoCV
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import silhouette_score
-from sklearn.metrics import r2_score
-from sklearn.ensemble import RandomForestRegressor
-import optuna
-from optuna.pruners import HyperbandPruner
-from sklearn.model_selection import cross_val_score, KFold
 import pickle
+import os
 
 
 # Load and preprocess dataset
@@ -202,13 +178,6 @@ def train_model():
 
         # assign a region to a mask
         region_masks[region] = mask
-
-    # Visualize mask
-    plt.imshow(region_masks['Region 11'], cmap="gray")
-    plt.title("Region 11 Mask")
-    plt.axis("off")
-    plt.show()
-
 
     # Defining the geographic bounds of the image. Roughly defined as the longitude latitude maximums and minimums for Canada.
     min_lat, max_lat = 42.0, 83
@@ -465,15 +434,19 @@ def train_model():
     # Fit the SVR model
     svr_best.fit(X_scaled, y)
 
+    #make directory for models, fail safe to ensure even if not created using Docker it is here.
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    models_dir = os.path.join(script_dir, "models")
+    os.makedirs(models_dir, exist_ok=True)
 
 # Save models
-    with open("models/kmeans_model.pkl", "wb") as f:
+    with open(os.path.join(models_dir, "kmeans_model.pkl"), "wb") as f:
         pickle.dump(kmeans, f)
-    with open("models/regression_model.pkl", "wb") as f:
+    with open(os.path.join(models_dir, "regression_model.pkl"), "wb") as f:
         pickle.dump(svr_best, f)
 
     # Save predictions
-    predictions = pd.DataFrame({"actual": y_test, "predicted": regressor.predict(X_test)})
+    predictions = pd.DataFrame({"actual": y, "predicted": svr_best.predict(X)})
     predictions.to_pickle("app/predictions.pkl")
 
     fire_data = grouped_data.copy()
