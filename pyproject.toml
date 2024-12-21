@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "wildfire_prediction_package"
+version = "0.1.0"
+description = "This is a package that trains on wildfire data and predicts the number of hectares burned."
+authors = ["Mackenzie Rock"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.12"
+fastapi = "^0.115.6"
+uvicorn = "^0.34.0"
+pandas = "^2.1.0"
+scikit-learn = "^1.6.0"
+fonttools = "^4.55.3"
+matplotlib = "^3.10.0"
+meteostat = "^1.6.8"
+shapely = "^2.0.6"
+lightgbm = "^4.5.0"
+scipy = "^1.14.1"
+seaborn = "^0.13.2"
+optuna = "^4.1.0"
+opencv-python = "^4.10.0.84"
+numpy = "^2.2.0"
+torch = "^2.5.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
