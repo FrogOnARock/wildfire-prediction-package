@@ -13,6 +13,7 @@ from src.preprocess import  preprocess_model
 from fastapi.requests import Request
 from fastapi import BackgroundTasks
 import numpy as np
+import signal
 
 # Define paths
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -302,6 +303,12 @@ def predict_hectares(input_data: RegressionInput):
     except Exception as e:
         logger.error(f"Error during prediction: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/shutdown")
+def shutdown():
+    # Send SIGTERM to the current process
+    os.kill(os.getpid(), signal.SIGTERM)
+    return {"message": "Application is shutting down..."}
 
 if __name__ == "__main__":
     import uvicorn

@@ -8,7 +8,7 @@ st.title("Wildfire Prediction App")
 st.write("Interact with the Wildfire Prediction API via this user-friendly interface.")
 
 # Tabs for different functionalities
-tab1, tab2, tab3 = st.tabs(["Predict Cluster", "Predict Hectares Burned", "Train Models"])
+tab1, tab2, tab3, tab4 = st.tabs(["Predict Cluster", "Predict Hectares Burned", "Train Models", "Shutdown"])
 
 # Predict Cluster Tab
 with tab1:
@@ -100,6 +100,19 @@ with tab3:
     if st.button("Train Models"):
         try:
             response = requests.post(f"{BASE_URL}/train")
+            if response.status_code == 200:
+                st.success(response.json()["message"])
+            else:
+                st.error(f"Error: {response.json()['detail']}")
+        except Exception as e:
+            st.error(f"Connection Error: {e}")
+
+# Shutdown Tab
+with tab4:
+    st.header("Shutdown Application")
+    if st.button("Shutdown"):
+        try:
+            response = requests.post(f"{BASE_URL}/shutdown")
             if response.status_code == 200:
                 st.success(response.json()["message"])
             else:
