@@ -381,7 +381,7 @@ def preprocess_model():
 
     # drop unnecessary columns
     fire_data.drop(columns=['PROTZONE', 'LATITUDE', 'LONGITUDE', 'REP_DATE', 'OUT_DATE', 'lat_rounded', 'lon_rounded',
-                            'Year-Month', 'YEAR', 'DAY', 'Report Date', 'Out Date', 'snow', 'FID', 'FIRE_TYPE'],
+                            'Year-Month', 'YEAR', 'DAY', 'snow', 'FID', 'FIRE_TYPE'],
                    inplace=True)
 
     # one-hot encode categorical columns

@@ -30,17 +30,15 @@ def predict_cluster_model(features):
 
     # Split numerical and categorical features
     numerical_features = np.array(features[1:8]).reshape(1, -1)  # Indices 2–7 are numerical
-    categorical_features = np.hstack((features[:1],features[8:])).reshape(1, -1)  # Remaining features are categorical
+    categorical_features = np.hstack((features[:1],features[8:-2])).reshape(1, -1)  # Remaining features are categorical
 
-    print(numerical_features)
 
     # Scale numerical features
     numerical_features_scaled = scaler.transform(numerical_features)
 
-
-
     # Combine scaled numerical features with categorical features
     combined_features = np.hstack((numerical_features_scaled, categorical_features))
+
 
     #conver to pytorch sensor
     combined_features_tensor = torch.tensor(combined_features, dtype=torch.float32)

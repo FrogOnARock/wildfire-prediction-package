@@ -68,7 +68,7 @@ def train_model():
     fire_data_path = os.path.join(DATA_DIR, "processed_data.csv")
     fire_data_encoded = pd.read_csv(fire_data_path, sep=",", header=0)
 
-    X = fire_data_encoded.drop(columns='SIZE_HA')
+    X = fire_data_encoded.drop(columns=['SIZE_HA', 'Unnamed: 0'])
 
     logger.info("Beginning auto-encoding...")
 
@@ -115,11 +115,15 @@ def train_model():
     logger.info("Clustering complete")
 
     fire_data_regression = fire_data_encoded.copy()
+    fire_data_regression = pd.get_dummies(fire_data_encoded, columns=['cluster'], drop_first=True,
+                                       dtype=int)
 
 
     # Set predictors and target
-    X = fire_data_encoded.drop(columns='SIZE_HA')
+    X = fire_data_regression.drop(columns=['SIZE_HA', 'Unnamed: 0'])
     y = fire_data_regression['SIZE_HA']
+
+    print(X.columns)
 
     logger.info("Applying regression...")
 

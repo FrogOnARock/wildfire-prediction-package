@@ -105,7 +105,7 @@ def transform_inputs(input_data):
                 'Region_Region 7', 'Region_Region 8',
                 'RESPONSE_MOD', 'RESPONSE_MON',
                 'MONTH_2', 'MONTH_3', 'MONTH_4', 'MONTH_5', 'MONTH_6',
-                'MONTH_7', 'MONTH_8', 'MONTH_9', 'MONTH_10', 'MONTH_11', 'MONTH_12'
+                'MONTH_7', 'MONTH_8', 'MONTH_9', 'MONTH_10', 'MONTH_11', 'MONTH_12', 'cluster_1', 'cluster_2'
             ]
 
             feature_vector = np.zeros(len(column_names))
@@ -125,6 +125,13 @@ def transform_inputs(input_data):
             feature_vector[column_index["wpgt"]] = input_data.max_wind_gust
             feature_vector[column_index["pres"]] = input_data.pressure
 
+            try:
+                cluster_col = f"Cluster_{input_data.cluster}"
+                if cluster_col in column_index and input_data.cluster != 3:
+                    feature_vector[column_index[cluster_col]] = 1
+            except Exception as e:
+                feature_vector[column_index['cluster_1']] = 0
+
             # Categorical variables with dropped categories
             # Cause
             cause_mapping = {"H-PB": "CAUSE_H-PB", "N": "CAUSE_N", "U": "CAUSE_U"}  # Dropped "CAUSE_H"
@@ -139,7 +146,7 @@ def transform_inputs(input_data):
                 feature_vector[column_index[region_col]] = 1
 
             # Response
-            response_mapping = {"FUL": "RESPONSE_MOD", "MOD": "RESPONSE_MON"}  # Assuming one response is dropped
+            response_mapping = {"FUL": "RESPONSE_MOD", "MOD": "RESPONSE_MON"}  # one response is dropped
             if input_data.response in response_mapping:
                 response_col = response_mapping[input_data.response]
                 feature_vector[column_index[response_col]] = 1
@@ -214,6 +221,7 @@ def predict_cluster(input_data: ClusterInput):
 
 @app.post("/predict/hectares", response_model=PredictionOutput)
 def predict_hectares(input_data: RegressionInput):
+
     features = transform_inputs(input_data)
 
     """Predict final hectares burned based on cluster and features."""
@@ -221,8 +229,8 @@ def predict_hectares(input_data: RegressionInput):
         logger.error("Regression model file is missing")
         raise HTTPException(status_code=500, detail="Regression model file missing")
     try:
-        logger.info(f"Predicting hectares burned for features: {input_data.features}")
-        prediction = predict_hectare_model(input_data.cluster, features)
+        logger.info(f"Predicting hectares burned for features: {features}")
+        prediction = predict_hectare_model(features)
         logger.info(f"Prediction: {prediction}")
         return {"prediction": prediction}
     except Exception as e:
