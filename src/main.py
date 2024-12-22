@@ -46,6 +46,12 @@ def read_root():
     """Root endpoint for the Wildfire Prediction API."""
     return {
         "message": "Welcome to the Wildfire Prediction API!",
+        "usage": {
+            "Preprocessing Data": "/preprocess (POST)",
+            "Train Models": "/train (POST)",
+            "Predict Wildfire Cluster": "/predict/cluster (POST)",
+            "Predict Hectares Burned": "/predict/hectares (POST)"
+        },
         "docs": "/docs",
         "redoc": "/redoc",
     }
@@ -75,6 +81,24 @@ class ClusterInput(BaseModel):
     response: str = Field(..., description="FUL, MOD, or MON.")
     month: int = Field(..., description="Month (1–12).")
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "national_park": "Y",
+                "temp_avg": 25.0,
+                "temp_min": 20.0,
+                "temp_max": 30.0,
+                "precip": 5.0,
+                "windspeed": 10.0,
+                "max_wind_gust": 50.0,
+                "pressure": 1015.0,
+                "cause": "N",
+                "region": 1,
+                "response": "MOD",
+                "month": 7
+            }
+        }
+
 class RegressionInput(BaseModel):
     cluster: int
     national_park: str = Field(..., description="Yes/No for National Park.")
@@ -90,88 +114,130 @@ class RegressionInput(BaseModel):
     response: str = Field(..., description="FUL, MOD, or MON.")
     month: int = Field(..., description="Month (1–12).")
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "cluster": 2,
+                "national_park": "Y",
+                "temp_avg": 25.0,
+                "temp_min": 20.0,
+                "temp_max": 30.0,
+                "precip": 5.0,
+                "windspeed": 10.0,
+                "max_wind_gust": 50.0,
+                "pressure": 1015.0,
+                "cause": "N",
+                "region": 1,
+                "response": "MOD",
+                "month": 7
+            }
+        }
+
 class PredictionOutput(BaseModel):
     prediction: float
 
 def transform_inputs(input_data):
-    continue_loop = 1
-    while continue_loop == 1:
-        try:
-            column_names = [
-                'NAT_PARK BINARY', 'tavg', 'tmin', 'tmax', 'prcp', 'wspd', 'wpgt', 'pres',
-                'CAUSE_H-PB', 'CAUSE_N', 'CAUSE_U',
-                'Region_Region 1', 'Region_Region 11', 'Region_Region 12', 'Region_Region 13',
-                'Region_Region 2', 'Region_Region 3', 'Region_Region 4', 'Region_Region 5', 'Region_Region 6',
-                'Region_Region 7', 'Region_Region 8',
-                'RESPONSE_MOD', 'RESPONSE_MON',
-                'MONTH_2', 'MONTH_3', 'MONTH_4', 'MONTH_5', 'MONTH_6',
-                'MONTH_7', 'MONTH_8', 'MONTH_9', 'MONTH_10', 'MONTH_11', 'MONTH_12', 'cluster_1', 'cluster_2'
-            ]
+    try:
+        # Define column names and initialize feature vector
+        column_names = [
+            'NAT_PARK BINARY', 'tavg', 'tmin', 'tmax', 'prcp', 'wspd', 'wpgt', 'pres',
+            'CAUSE_H-PB', 'CAUSE_N', 'CAUSE_U',
+            'Region_Region 1', 'Region_Region 11', 'Region_Region 12', 'Region_Region 13',
+            'Region_Region 2', 'Region_Region 3', 'Region_Region 4', 'Region_Region 5', 'Region_Region 6',
+            'Region_Region 7', 'Region_Region 8',
+            'RESPONSE_MOD', 'RESPONSE_MON',
+            'MONTH_2', 'MONTH_3', 'MONTH_4', 'MONTH_5', 'MONTH_6',
+            'MONTH_7', 'MONTH_8', 'MONTH_9', 'MONTH_10', 'MONTH_11', 'MONTH_12', 'cluster_1', 'cluster_2'
+        ]
+        feature_vector = np.zeros(len(column_names))
+        column_index = {col: idx for idx, col in enumerate(column_names)}
 
-            feature_vector = np.zeros(len(column_names))
+        # Validate and map inputs
+        # 1. NAT_PARK BINARY
+        if input_data.national_park.upper() not in ["Y", "N"]:
+            raise ValueError("NAT_PARK BINARY must be 'Y' or 'N'")
+        feature_vector[column_index["NAT_PARK BINARY"]] = 1 if input_data.national_park.upper() == "Y" else 0
 
-            # Create a mapping of column names to indices for easy lookup
-            column_index = {col: idx for idx, col in enumerate(column_names)}
+        # 2. tavg, tmin, tmax
+        for field, name in [(input_data.temp_avg, "tavg"), (input_data.temp_min, "tmin"), (input_data.temp_max, "tmax")]:
+            if not (-40 <= field <= 40):
+                raise ValueError(f"{name} must be between -40 and 40")
+            feature_vector[column_index[name]] = field
 
-            # National Park binary mapping
-            feature_vector[column_index["NAT_PARK BINARY"]] = 1 if input_data.national_park.lower() == "yes" else 0
+        # 3. prcp
+        if not (0 <= input_data.precip <= 50):
+            raise ValueError("prcp must be between 0 and 50")
+        feature_vector[column_index["prcp"]] = input_data.precip
 
-            # Direct mappings for continuous variables
-            feature_vector[column_index["tavg"]] = input_data.temp_avg
-            feature_vector[column_index["tmin"]] = input_data.temp_min
-            feature_vector[column_index["tmax"]] = input_data.temp_max
-            feature_vector[column_index["prcp"]] = input_data.precip
-            feature_vector[column_index["wspd"]] = input_data.windspeed
-            feature_vector[column_index["wpgt"]] = input_data.max_wind_gust
-            feature_vector[column_index["pres"]] = input_data.pressure
+        # 4. wspd
+        if not (0 <= input_data.windspeed <= 80):
+            raise ValueError("wspd must be between 0 and 80")
+        feature_vector[column_index["wspd"]] = input_data.windspeed
 
-            try:
-                cluster_col = f"Cluster_{input_data.cluster}"
-                if cluster_col in column_index and input_data.cluster != 3:
-                    feature_vector[column_index[cluster_col]] = 1
-            except Exception as e:
-                feature_vector[column_index['cluster_1']] = 0
+        # 5. wpgt
+        if not (0 <= input_data.max_wind_gust <= 400):
+            raise ValueError("wpgt must be between 0 and 400")
+        feature_vector[column_index["wpgt"]] = input_data.max_wind_gust
 
-            # Categorical variables with dropped categories
-            # Cause
-            cause_mapping = {"H-PB": "CAUSE_H-PB", "N": "CAUSE_N", "U": "CAUSE_U"}  # Dropped "CAUSE_H"
-            if input_data.cause in cause_mapping:
-                cause_col = cause_mapping[input_data.cause]
-                feature_vector[column_index[cause_col]] = 1
+        # 6. pres
+        if not (980 <= input_data.pressure <= 1100):
+            raise ValueError("pres must be between 980 and 1100")
+        feature_vector[column_index["pres"]] = input_data.pressure
 
-            # Region
+        # 7. cause
+        cause_mapping = {"H": None, "H-PB": "CAUSE_H-PB", "N": "CAUSE_N", "U": "CAUSE_U"}
+        if input_data.cause not in cause_mapping:
+            raise ValueError("cause must be one of 'H', 'N', 'H-PB', or 'U'")
+        if input_data.cause != "H":
+            cause_col = cause_mapping[input_data.cause]
+            feature_vector[column_index[cause_col]] = 1
+
+        # 8. region
+        if not (1 <= input_data.region <= 13):
+            raise ValueError("region must be between 1 and 13")
+        if input_data.region != 9:
             region_col = f"Region_Region {input_data.region}"
-            # Ensure we exclude "Region_Region 3"
-            if region_col in column_index and input_data.region != 3:
-                feature_vector[column_index[region_col]] = 1
+            feature_vector[column_index[region_col]] = 1
 
-            # Response
-            response_mapping = {"FUL": "RESPONSE_MOD", "MOD": "RESPONSE_MON"}  # one response is dropped
-            if input_data.response in response_mapping:
-                response_col = response_mapping[input_data.response]
-                feature_vector[column_index[response_col]] = 1
+        # 9. response
+        response_mapping = {"MON": "RESPONSE_MON", "MOD": "RESPONSE_MOD", "FUL": None}
+        if input_data.response not in response_mapping:
+            raise ValueError("response must be one of 'MON', 'MOD', or 'FUL'")
+        if input_data.response != "FUL":
+            response_col = response_mapping[input_data.response]
+            feature_vector[column_index[response_col]] = 1
 
-            # Month
-            if 2 <= input_data.month <= 12:  # Dropping "MONTH_1"
-                month_col = f"MONTH_{input_data.month}"
-                if month_col in column_index:
-                    feature_vector[column_index[month_col]] = 1
+        # 10. month
+        if not (1 <= input_data.month <= 12):
+            raise ValueError("month must be between 1 and 12")
+        if input_data.month != 1:
+            month_col = f"MONTH_{input_data.month}"
+            feature_vector[column_index[month_col]] = 1
 
+        # 11. cluster
+        try:
+            if not (0 <= input_data.cluster <= 2):
+                raise ValueError("cluster must be between 0 and 2")
 
+            cluster_col = f"cluster_{input_data.cluster}"
+            if cluster_col in column_index and input_data.cluster != 0:
+                feature_vector[column_index[cluster_col]] = 1
 
-            return feature_vector
+        except Exception as e:
+            feature_vector[column_index['cluster_1']] = 0
 
-            continue_loop = 0
+        return feature_vector
 
-            return features
+    except ValueError as e:
+        logger.error(f"Input validation error: {str(e)}")
 
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-            userinput = input("Would you like to try again? (y/n)")
-            if userinput.lower() == "y":
-                continue
-            else:
-                continue_loop = 0
+        raise HTTPException(status_code=400,
+            detail={
+                "error": "Invalid input data",
+                "message": str(e),
+                "hint": "Please ensure all inputs are within the expected range."
+                   }
+            )
 
 
 @app.post("/preprocess")

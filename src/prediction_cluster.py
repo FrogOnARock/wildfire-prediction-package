@@ -16,6 +16,8 @@ AE_PATH = os.path.join(BASE_DIR, "models", "encoder.pth")
 
 def predict_cluster_model(features):
     """Predict wildfire cluster based on input features."""
+    print("is it here?")
+
     if not os.path.exists(KMEANS_MODEL_PATH):
         raise FileNotFoundError(f"Model file not found at {KMEANS_MODEL_PATH}")
 
