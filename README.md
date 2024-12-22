@@ -11,6 +11,9 @@ The Wildfire Prediction Application is a comprehensive tool for training machine
 ---
 # Project documentation
 
+## Repository
+
+[GitHub Repository](https://github.com/FrogOnARock/wildfire_prediction-package)
 
 ## Requirements
 - **Python**: `>=3.10`
@@ -36,7 +39,7 @@ pip install poetry
 #### **Step 1: Clone the Repository**
 Clone the repository and navigate to the correct directory
 ```bash
-git clone <repository-url>
+git clone https://github.com/FrogOnARock/wildfire_prediction-package.git
 cd Wildfire Prediction
 ```
 #### **Step 2: Install Poetry**
